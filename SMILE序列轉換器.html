@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>化學結構轉換實驗室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Microsoft JhengHei, sans-serif;
+        }
+        .step-card {
+            transition: all 0.3s ease;
+        }
+        .step-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .arrow-down {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            color: #9ca3af;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-5px);}
+            60% {transform: translateY(-3px);}
+        }
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-2xl mx-auto space-y-4">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 tracking-tight">🧪 化學結構轉換實驗室</h1>
+            <p class="text-gray-600 mt-2">三階段工具：翻譯 ➔ 化學式 ➔ SMILES 結構</p>
+        </div>
+
+        <!-- Step 1: 翻譯 -->
+        <div class="step-card bg-white rounded-xl shadow-md overflow-hidden border-l-8 border-purple-500">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="bg-purple-100 text-purple-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                        中英翻譯
+                    </h2>
+                    <span class="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded">Wikipedia API</span>
+                </div>
+                
+                <div class="flex gap-2">
+                    <input type="text" id="input-trans" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                        placeholder="輸入中文俗名 (如: 阿斯匹靈)">
+                    <button onclick="doTranslate()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2">
+                        <span>翻譯</span>
+                        <div id="loader-trans" class="spinner hidden"></div>
+                    </button>
+                </div>
+                
+                <!-- 結果顯示 -->
+                <div id="result-trans" class="hidden mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100 text-purple-900 flex justify-between items-center">
+                    <div>
+                        <span class="text-xs text-purple-500 uppercase font-bold">English Name</span>
+                        <div id="out-trans-text" class="font-bold text-lg"></div>
+                    </div>
+                    <span class="text-xs text-gray-400">已自動填入下一步 ⬇</span>
+                </div>
+                <div id="error-trans" class="hidden mt-2 text-red-500 text-sm"></div>
+            </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="arrow-down">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+
+        <!-- Step 2: 化學式 -->
+        <div class="step-card bg-white rounded-xl shadow-md overflow-hidden border-l-8 border-blue-500">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                        查詢化學式
+                    </h2>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">PubChem Data</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="input-formula" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="輸入英文名稱 (如: Aspirin)">
+                    <button onclick="doGetFormula()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2">
+                        <span>查詢</span>
+                        <div id="loader-formula" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <!-- 結果顯示 -->
+                <div id="result-formula" class="hidden mt-4 bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
+                    <div class="p-3 border-b border-blue-100 flex justify-between items-center">
+                        <div>
+                            <span class="text-xs text-blue-500 uppercase font-bold">Molecular Formula</span>
+                            <div id="out-formula-text" class="font-mono font-bold text-xl text-blue-900"></div>
+                        </div>
+                        <div class="text-right">
+                             <span class="text-xs text-blue-400">CID</span>
+                             <div id="out-cid-text" class="text-sm font-mono text-blue-700"></div>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-white">
+                        <span class="text-xs text-gray-400 uppercase font-bold">IUPAC Name</span>
+                        <div id="out-iupac-text" class="text-sm text-gray-600 italic"></div>
+                    </div>
+                </div>
+                 <div id="error-formula" class="hidden mt-2 text-red-500 text-sm"></div>
+            </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="arrow-down">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+
+        <!-- Step 3: SMILES & 結構 -->
+        <div class="step-card bg-white rounded-xl shadow-md overflow-hidden border-l-8 border-green-500">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="bg-green-100 text-green-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                        SMILES 與結構圖
+                    </h2>
+                    <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">SmilesDrawer</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="input-smiles" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                        placeholder="輸入名稱或化學式">
+                    <button onclick="doGetSmiles()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2">
+                        <span>轉換</span>
+                        <div id="loader-smiles" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <!-- 結果顯示 -->
+                <div id="result-smiles" class="hidden mt-6">
+                    
+                    <div class="mb-2">
+                        <span class="text-xs text-gray-500 font-bold uppercase">Canonical SMILES</span>
+                        <div class="flex mt-1">
+                            <code id="out-smiles-code" class="flex-1 bg-gray-800 text-green-400 p-3 rounded-l-lg font-mono text-sm break-all"></code>
+                            <button onclick="copySmiles()" class="bg-gray-200 hover:bg-gray-300 text-gray-600 px-4 rounded-r-lg transition">📋</button>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 border border-gray-200 rounded-lg p-2 bg-white flex justify-center shadow-inner relative" style="height: 300px;">
+                         <canvas id="structureCanvas"></canvas>
+                    </div>
+                </div>
+                <div id="error-smiles" class="hidden mt-2 text-red-500 text-sm"></div>
+            </div>
+        </div>
+        
+        <div class="text-center text-gray-400 text-xs py-4">
+            Data provided by PubChem & Wikipedia
+        </div>
+
+    </div>
+
+    <script>
+        // === 全域變數：用來暫存上一步找到的 CID ===
+        let currentCID = null;
+        
+        // === 初始化繪圖引擎 ===
+        const drawerOptions = {
+            width: 450, 
+            height: 280,
+            bondThickness: 1.0, bondLength: 15, shortBondLength: 0.85, bondSpacing: 0.18 * 15,
+            atomVisualization: 'default', isometric: true, debug: false, terminalCarbons: true,
+            explicitHydrogens: false, overlapSensitivity: 0.42, overlapResolutionIterations: 1,
+            compactDrawing: false, fontSizeLarge: 6, fontSizeSmall: 4,
+            themes: { light: { C: '#222', O: '#e53e3e', N: '#3182ce', F: '#38a169', CL: '#38a169', BR: '#805ad5', I: '#805ad5', P: '#dd6b20', S: '#d69e2e', BACKGROUND: '#ffffff' } }
+        };
+        let drawer;
+        try { drawer = new SmilesDrawer.Drawer(drawerOptions); } catch (e) { console.error(e); }
+
+
+        // === Step 1: 翻譯 ===
+        async function doTranslate() {
+            const input = document.getElementById('input-trans').value.trim();
+            const loader = document.getElementById('loader-trans');
+            const resultBox = document.getElementById('result-trans');
+            const outputText = document.getElementById('out-trans-text');
+            const errorBox = document.getElementById('error-trans');
+
+            if (!input) return;
+
+            // Reset
+            loader.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+            errorBox.classList.add('hidden');
+
+            try {
+                const wikiUrl = `https://zh.wikipedia.org/w/api.php?action=query&prop=langlinks&titles=${encodeURIComponent(input)}&lllang=en&format=json&origin=*&redirects=1`;
+                const response = await fetch(wikiUrl);
+                const data = await response.json();
+                
+                let englishName = null;
+                
+                if (data.query && data.query.pages) {
+                    const pages = data.query.pages;
+                    const pageId = Object.keys(pages)[0];
+                    if (pageId !== "-1" && pages[pageId].langlinks) {
+                        englishName = pages[pageId].langlinks[0]["*"];
+                    }
+                }
+
+                if (englishName) {
+                    outputText.textContent = englishName;
+                    resultBox.classList.remove('hidden');
+                    document.getElementById('input-formula').value = englishName;
+                    resetStep2();
+                    resetStep3();
+                } else {
+                    throw new Error("找不到對應的英文翻譯，請嘗試直接輸入英文。");
+                }
+
+            } catch (e) {
+                errorBox.textContent = e.message || "翻譯失敗";
+                errorBox.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+
+        // === Step 2: 查詢化學式 ===
+        async function doGetFormula() {
+            const input = document.getElementById('input-formula').value.trim();
+            const loader = document.getElementById('loader-formula');
+            const resultBox = document.getElementById('result-formula');
+            const errorBox = document.getElementById('error-formula');
+            
+            if (!input) return;
+
+            loader.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+            errorBox.classList.add('hidden');
+            currentCID = null;
+
+            try {
+                // 先查 CID
+                const cidUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(input)}/cids/JSON`;
+                const cidRes = await fetch(cidUrl);
+                if(!cidRes.ok) throw new Error("找不到此化合物 (PubChem)");
+                const cidData = await cidRes.json();
+                
+                if (cidData.IdentifierList && cidData.IdentifierList.CID) {
+                    currentCID = cidData.IdentifierList.CID[0];
+                } else {
+                    throw new Error("找不到 CID");
+                }
+
+                // 查屬性
+                const propUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${currentCID}/property/MolecularFormula,IUPACName/JSON`;
+                const propRes = await fetch(propUrl);
+                const propData = await propRes.json();
+                const props = propData.PropertyTable.Properties[0];
+
+                document.getElementById('out-formula-text').textContent = props.MolecularFormula || "N/A";
+                document.getElementById('out-cid-text').textContent = currentCID;
+                document.getElementById('out-iupac-text').textContent = props.IUPACName || "N/A";
+                
+                resultBox.classList.remove('hidden');
+                document.getElementById('input-smiles').value = input;
+                resetStep3();
+
+            } catch (e) {
+                errorBox.textContent = "找不到該化合物的資料，請檢查拼字。";
+                errorBox.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+
+        // === Step 3: SMILES & 結構 (使用純文字 TXT 模式) ===
+        async function doGetSmiles() {
+            const input = document.getElementById('input-smiles').value.trim();
+            const loader = document.getElementById('loader-smiles');
+            const resultBox = document.getElementById('result-smiles');
+            const errorBox = document.getElementById('error-smiles');
+            const canvas = document.getElementById('structureCanvas');
+
+            if (!input) return;
+
+            loader.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+            errorBox.classList.add('hidden');
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            try {
+                let activeCID = currentCID;
+                const step2Input = document.getElementById('input-formula').value.trim();
+
+                // 確保有 CID
+                if (!activeCID || input !== step2Input) {
+                    try {
+                        const cidUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(input)}/cids/JSON`;
+                        const cidRes = await fetch(cidUrl);
+                        if (cidRes.ok) {
+                            const cidData = await cidRes.json();
+                            if (cidData.IdentifierList && cidData.IdentifierList.CID) {
+                                activeCID = cidData.IdentifierList.CID[0];
+                            }
+                        }
+                    } catch (err) { console.warn("Fallback CID lookup failed"); }
+                }
+
+                if (!activeCID) {
+                    throw new Error("找不到化合物 ID，請確認名稱是否正確。");
+                }
+
+                // === 關鍵修正：直接索取 TXT 純文字，不使用 JSON ===
+                // 這樣可以避免 JSON 解析錯誤或屬性為空的靈異現象
+                const smilesUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${activeCID}/property/CanonicalSMILES/TXT`;
+                
+                const response = await fetch(smilesUrl, { cache: 'no-store' });
+                
+                if (!response.ok) throw new Error(`API 錯誤 (Status: ${response.status})`);
+                
+                // 直接讀取文字
+                const smilesText = await response.text();
+                const smiles = smilesText.trim(); // 去除前後空白
+
+                if (!smiles || smiles.length === 0) {
+                     throw new Error(`資料庫回傳空字串 (CID: ${activeCID})`);
+                }
+
+                // 顯示 SMILES
+                document.getElementById('out-smiles-code').textContent = smiles;
+                resultBox.classList.remove('hidden');
+
+                // 繪圖 (延遲以確保 DOM 更新)
+                canvas.width = 450;
+                canvas.height = 300;
+                
+                if (typeof SmilesDrawer !== 'undefined') {
+                    setTimeout(() => {
+                            try {
+                            SmilesDrawer.parse(smiles, function(tree) {
+                                drawer.draw(tree, 'structureCanvas', 'light', false);
+                            }, function(err) {
+                                console.error('SmilesDrawer error:', err);
+                            });
+                            } catch(err) {
+                                console.error('Draw crash:', err);
+                            }
+                    }, 50);
+                }
+
+            } catch (e) {
+                errorBox.textContent = `轉換失敗：${e.message}`;
+                errorBox.classList.remove('hidden');
+                console.error(e);
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        // === 輔助功能 ===
+        function resetStep2() {
+            document.getElementById('result-formula').classList.add('hidden');
+            document.getElementById('error-formula').classList.add('hidden');
+            currentCID = null;
+        }
+        function resetStep3() {
+            document.getElementById('result-smiles').classList.add('hidden');
+            document.getElementById('error-smiles').classList.add('hidden');
+            const canvas = document.getElementById('structureCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+        }
+
+        function copySmiles() {
+            const text = document.getElementById('out-smiles-code').textContent;
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert("已複製！");
+            } catch (err) {
+                prompt("複製失敗，請手動複製：", text);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        document.getElementById("input-trans").addEventListener("keypress", (e) => { if (e.key === "Enter") doTranslate(); });
+        document.getElementById("input-formula").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetFormula(); });
+        document.getElementById("input-smiles").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetSmiles(); });
+
+    </script>
+</body>
+</html>
