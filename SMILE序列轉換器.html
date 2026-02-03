@@ -5,7 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>化學結構轉換實驗室</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 SmilesDrawer 用於繪製 2D 結構圖 -->
     <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+    <!-- 引入 RDKit 用於計算分子指紋 -->
+    <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
+    <!-- 引入 3Dmol.js 用於繪製 3D 結構 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+    <!-- 新增：引入 gif.js 用於生成 GIF 動畫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
     
     <style>
         body {
@@ -42,16 +49,37 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 分子指紋位元樣式 */
+        .bit-box {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin: 1px;
+            border-radius: 1px;
+        }
+        .bit-1 { background-color: #f97316; } /* Orange for active */
+        .bit-0 { background-color: #e5e7eb; } /* Gray for inactive */
+        
+        /* 3D Viewer Container */
+        #container-3d {
+            width: 100%;
+            height: 400px;
+            position: relative;
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
-    <div class="max-w-2xl mx-auto space-y-4">
+    <div class="max-w-3xl mx-auto space-y-4">
         
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-gray-800 tracking-tight">🧪 化學結構轉換實驗室</h1>
-            <p class="text-gray-600 mt-2">三階段工具：翻譯 ➔ 化學式 ➔ SMILES 結構</p>
+            <p class="text-gray-600 mt-2">五階段工具：翻譯 ➔ 化學式 ➔ SMILES ➔ 分子指紋 ➔ 3D 立體結構</p>
         </div>
 
         <!-- Step 1: 翻譯 -->
@@ -145,7 +173,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <span class="bg-green-100 text-green-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">3</span>
-                        SMILES 與結構圖
+                        SMILES 與 2D 結構
                     </h2>
                     <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">SmilesDrawer</span>
                 </div>
@@ -167,29 +195,155 @@
                         <span class="text-xs text-gray-500 font-bold uppercase">Canonical SMILES</span>
                         <div class="flex mt-1">
                             <code id="out-smiles-code" class="flex-1 bg-gray-800 text-green-400 p-3 rounded-l-lg font-mono text-sm break-all"></code>
-                            <button onclick="copySmiles()" class="bg-gray-200 hover:bg-gray-300 text-gray-600 px-4 rounded-r-lg transition">📋</button>
+                            <button onclick="copySmiles()" class="bg-gray-200 hover:bg-gray-300 text-gray-600 px-4 rounded-r-lg transition" title="複製 SMILES">📋</button>
                         </div>
                     </div>
 
-                    <div class="mt-4 border border-gray-200 rounded-lg p-2 bg-white flex justify-center shadow-inner relative" style="height: 300px;">
+                    <div class="mt-4 border border-gray-200 rounded-lg p-2 bg-white flex justify-center items-center shadow-inner relative" style="height: 300px;">
                          <canvas id="structureCanvas"></canvas>
+                         <!-- 下載按鈕 -->
+                         <button onclick="downloadStructureImage()" class="absolute bottom-2 right-2 bg-white/90 hover:bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-gray-500 hover:text-green-600 transition flex items-center gap-1 text-xs font-bold ring-1 ring-gray-100" title="下載 PNG 圖片">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            下載白底圖片
+                         </button>
                     </div>
                 </div>
                 <div id="error-smiles" class="hidden mt-2 text-red-500 text-sm"></div>
             </div>
         </div>
+
+        <!-- Arrow -->
+        <div class="arrow-down">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+
+        <!-- Step 4: 分子指紋 -->
+        <div class="step-card bg-white rounded-xl shadow-md overflow-hidden border-l-8 border-orange-500">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="bg-orange-100 text-orange-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">4</span>
+                        分子指紋 (ECFP4)
+                    </h2>
+                    <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">RDKit Engine</span>
+                </div>
+                
+                <div id="rdkit-loading" class="text-sm text-orange-500 mb-2 italic flex items-center gap-2">
+                    <div class="spinner border-orange-200 border-t-orange-500 w-4 h-4"></div>
+                    RDKit 引擎初始化中...
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="input-fingerprint" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                        placeholder="等待 SMILES 輸入..." readonly>
+                    <button id="btn-fingerprint" onclick="doGetFingerprint()" disabled class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span>生成指紋</span>
+                    </button>
+                </div>
+
+                <!-- 結果顯示 -->
+                <div id="result-fingerprint" class="hidden mt-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-gray-500 font-bold uppercase">Fingerprint Visualisation (2048 bits)</span>
+                        <div class="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full font-bold">
+                            Active Bits: <span id="active-bits-count">0</span>
+                        </div>
+                    </div>
+                    
+                    <div id="fingerprint-matrix" class="p-2 bg-white border border-gray-200 rounded-lg leading-none overflow-y-auto max-h-48 shadow-inner"></div>
+                </div>
+                <div id="error-fingerprint" class="hidden mt-2 text-red-500 text-sm"></div>
+            </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="arrow-down">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+
+        <!-- Step 5: 3D 結構 -->
+        <div class="step-card bg-white rounded-xl shadow-md overflow-hidden border-l-8 border-teal-500">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="bg-teal-100 text-teal-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">5</span>
+                        3D 立體結構
+                    </h2>
+                    <span class="text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-1 rounded">3Dmol.js</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="input-3d" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                        placeholder="等待 CID..." readonly>
+                    <button onclick="doGet3D()" class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2">
+                        <span>生成模型</span>
+                        <div id="loader-3d" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <!-- 3D 檢視器 -->
+                <div id="result-3d" class="hidden mt-6">
+                    <div class="border border-gray-200 rounded-lg p-2 bg-gray-50 shadow-inner relative">
+                         <div id="container-3d" class="relative"></div>
+                         
+                         <!-- 下載按鈕區 -->
+                         <div class="absolute bottom-4 right-4 flex gap-2 z-10">
+                            <!-- 下載 PNG -->
+                             <button onclick="download3DImage()" class="bg-white/90 hover:bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-gray-500 hover:text-teal-600 transition flex items-center gap-1 text-xs font-bold ring-1 ring-gray-100" title="下載 PNG 圖片">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                PNG
+                             </button>
+                             
+                             <!-- 下載 GIF -->
+                             <button id="btn-gif" onclick="download3DGIF()" class="bg-white/90 hover:bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-gray-500 hover:text-teal-600 transition flex items-center gap-1 text-xs font-bold ring-1 ring-gray-100" title="下載旋轉 GIF 動畫">
+                                <span id="gif-text" class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    GIF 動畫
+                                </span>
+                                <div id="loader-gif" class="hidden w-3 h-3 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                             </button>
+                         </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 italic text-center">* 使用滑鼠左鍵旋轉，右鍵移動，滾輪縮放</p>
+                </div>
+                <div id="error-3d" class="hidden mt-2 text-red-500 text-sm"></div>
+            </div>
+        </div>
         
         <div class="text-center text-gray-400 text-xs py-4">
-            Data provided by PubChem & Wikipedia
+            <p>Data provided by PubChem, Wikipedia & RDKit</p>
+            <p class="mt-1 font-medium text-gray-500">made by wangyinan</p>
         </div>
 
     </div>
 
     <script>
-        // === 全域變數：用來暫存上一步找到的 CID ===
+        // === 全域變數 ===
         let currentCID = null;
+        let RDKitModule = null;
+        let viewer3D = null; // 3Dmol viewer 實例
+
+        // === 初始化 RDKit ===
+        window.initRDKitModule().then(function(instance) {
+            RDKitModule = instance;
+            const loadingMsg = document.getElementById('rdkit-loading');
+            loadingMsg.classList.remove('text-orange-500', 'italic');
+            loadingMsg.classList.add('text-green-600', 'font-bold');
+            loadingMsg.innerHTML = "✓ RDKit 引擎已就緒";
+            
+            const btn = document.getElementById('btn-fingerprint');
+            btn.disabled = false;
+            document.getElementById('input-fingerprint').removeAttribute('readonly');
+            
+            console.log("RDKit Version: " + RDKitModule.version());
+        }).catch(err => {
+            document.getElementById('rdkit-loading').innerText = "❌ RDKit 載入失敗";
+            console.error(err);
+        });
         
-        // === 初始化繪圖引擎 ===
+        // === 初始化 SmilesDrawer ===
         const drawerOptions = {
             width: 450, 
             height: 280,
@@ -213,7 +367,6 @@
 
             if (!input) return;
 
-            // Reset
             loader.classList.remove('hidden');
             resultBox.classList.add('hidden');
             errorBox.classList.add('hidden');
@@ -239,6 +392,8 @@
                     document.getElementById('input-formula').value = englishName;
                     resetStep2();
                     resetStep3();
+                    resetStep4();
+                    resetStep5();
                 } else {
                     throw new Error("找不到對應的英文翻譯，請嘗試直接輸入英文。");
                 }
@@ -292,6 +447,11 @@
                 resultBox.classList.remove('hidden');
                 document.getElementById('input-smiles').value = input;
                 resetStep3();
+                resetStep4();
+                resetStep5();
+                
+                // 自動填入 Step 5
+                document.getElementById('input-3d').value = "CID: " + currentCID;
 
             } catch (e) {
                 errorBox.textContent = "找不到該化合物的資料，請檢查拼字。";
@@ -302,7 +462,7 @@
         }
 
 
-        // === Step 3: SMILES & 結構 (使用純文字 TXT 模式) ===
+        // === Step 3: SMILES & 結構 ===
         async function doGetSmiles() {
             const input = document.getElementById('input-smiles').value.trim();
             const loader = document.getElementById('loader-smiles');
@@ -323,7 +483,6 @@
                 let activeCID = currentCID;
                 const step2Input = document.getElementById('input-formula').value.trim();
 
-                // 確保有 CID
                 if (!activeCID || input !== step2Input) {
                     try {
                         const cidUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(input)}/cids/JSON`;
@@ -332,6 +491,8 @@
                             const cidData = await cidRes.json();
                             if (cidData.IdentifierList && cidData.IdentifierList.CID) {
                                 activeCID = cidData.IdentifierList.CID[0];
+                                currentCID = activeCID; // Update global
+                                document.getElementById('input-3d').value = "CID: " + currentCID;
                             }
                         }
                     } catch (err) { console.warn("Fallback CID lookup failed"); }
@@ -341,17 +502,13 @@
                     throw new Error("找不到化合物 ID，請確認名稱是否正確。");
                 }
 
-                // === 關鍵修正：直接索取 TXT 純文字，不使用 JSON ===
-                // 這樣可以避免 JSON 解析錯誤或屬性為空的靈異現象
                 const smilesUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${activeCID}/property/CanonicalSMILES/TXT`;
-                
                 const response = await fetch(smilesUrl, { cache: 'no-store' });
                 
                 if (!response.ok) throw new Error(`API 錯誤 (Status: ${response.status})`);
                 
-                // 直接讀取文字
                 const smilesText = await response.text();
-                const smiles = smilesText.trim(); // 去除前後空白
+                const smiles = smilesText.trim();
 
                 if (!smiles || smiles.length === 0) {
                      throw new Error(`資料庫回傳空字串 (CID: ${activeCID})`);
@@ -361,21 +518,21 @@
                 document.getElementById('out-smiles-code').textContent = smiles;
                 resultBox.classList.remove('hidden');
 
-                // 繪圖 (延遲以確保 DOM 更新)
+                // 自動填入 Step 4
+                document.getElementById('input-fingerprint').value = smiles;
+                resetStep4(); 
+                resetStep5(); // 清除 3D
+
+                // 繪圖
                 canvas.width = 450;
                 canvas.height = 300;
-                
                 if (typeof SmilesDrawer !== 'undefined') {
                     setTimeout(() => {
                             try {
                             SmilesDrawer.parse(smiles, function(tree) {
                                 drawer.draw(tree, 'structureCanvas', 'light', false);
-                            }, function(err) {
-                                console.error('SmilesDrawer error:', err);
-                            });
-                            } catch(err) {
-                                console.error('Draw crash:', err);
-                            }
+                            }, function(err) { console.error('SmilesDrawer error:', err); });
+                            } catch(err) { console.error('Draw crash:', err); }
                     }, 50);
                 }
 
@@ -387,6 +544,132 @@
                 loader.classList.add('hidden');
             }
         }
+
+        // === Step 4: 生成分子指紋 (RDKit) ===
+        function doGetFingerprint() {
+            const input = document.getElementById('input-fingerprint');
+            const resultBox = document.getElementById('result-fingerprint');
+            const errorBox = document.getElementById('error-fingerprint');
+            const fpMatrix = document.getElementById('fingerprint-matrix');
+            const activeCountSpan = document.getElementById('active-bits-count');
+
+            const smiles = input.value.trim();
+            if (!smiles) return;
+            if (!RDKitModule) {
+                errorBox.textContent = "RDKit 引擎尚未載入，請稍候...";
+                errorBox.classList.remove('hidden');
+                return;
+            }
+
+            // Reset
+            resultBox.classList.add('hidden');
+            errorBox.classList.add('hidden');
+            fpMatrix.innerHTML = "";
+
+            try {
+                // 1. 解析分子
+                const mol = RDKitModule.get_mol(smiles);
+                if (!mol || mol.is_valid() === false) {
+                    if(mol) mol.delete();
+                    throw new Error("無效的 SMILES 序列，RDKit 無法解析");
+                }
+
+                // 2. 計算 Morgan Fingerprint (radius=2, bits=2048)
+                const fp_params = JSON.stringify({ radius: 2, nBits: 2048 });
+                const fp_hex = mol.get_morgan_fp(fp_params);
+                
+                mol.delete();
+
+                // 3. Hex 轉 Binary
+                let fp_bits = "";
+                for (let i = 0; i < fp_hex.length; i++) {
+                    fp_bits += parseInt(fp_hex[i], 16).toString(2).padStart(4, '0');
+                }
+
+                // 4. 渲染位元格子
+                let activeCount = 0;
+                const fragment = document.createDocumentFragment();
+
+                for (let i = 0; i < fp_bits.length; i++) {
+                    const bit = fp_bits[i];
+                    const div = document.createElement('div');
+                    div.className = `bit-box ${bit === '1' ? 'bit-1' : 'bit-0'}`;
+                    div.title = `Bit ${i}: ${bit}`;
+                    fragment.appendChild(div);
+                    if (bit === '1') activeCount++;
+                }
+
+                fpMatrix.appendChild(fragment);
+                activeCountSpan.textContent = activeCount;
+                resultBox.classList.remove('hidden');
+
+            } catch (e) {
+                errorBox.textContent = "生成指紋失敗: " + e.message;
+                errorBox.classList.remove('hidden');
+                console.error(e);
+            }
+        }
+
+        // === Step 5: 生成 3D 結構 (3Dmol.js) ===
+        async function doGet3D() {
+            const loader = document.getElementById('loader-3d');
+            const resultBox = document.getElementById('result-3d');
+            const errorBox = document.getElementById('error-3d');
+            
+            // 檢查 CID
+            if (!currentCID) {
+                errorBox.textContent = "尚未取得化合物 CID，請先執行步驟 2";
+                errorBox.classList.remove('hidden');
+                return;
+            }
+
+            loader.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+            errorBox.classList.add('hidden');
+
+            try {
+                // 向 PubChem 請求 3D SDF 檔案
+                // record_type=3d 是關鍵，請求計算好的 3D 構形
+                const sdfUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${currentCID}/SDF?record_type=3d`;
+                
+                const response = await fetch(sdfUrl);
+                if (!response.ok) {
+                    if (response.status === 404) throw new Error("資料庫中無此化合物的 3D 模型");
+                    throw new Error("下載 3D 模型失敗");
+                }
+                
+                const sdfData = await response.text();
+                
+                // 顯示容器
+                resultBox.classList.remove('hidden');
+
+                // 初始化或更新 3D Viewer
+                // 延遲一點點確保 div 已經顯示且有高度
+                setTimeout(() => {
+                    const element = document.getElementById('container-3d');
+                    
+                    // 如果尚未初始化，創建 viewer
+                    if (!viewer3D) {
+                        const config = { backgroundColor: 'white' };
+                        viewer3D = $3Dmol.createViewer(element, config);
+                    }
+                    
+                    viewer3D.clear();
+                    viewer3D.addModel(sdfData, "sdf");
+                    // 設定樣式：棒狀圖 (stick)
+                    viewer3D.setStyle({}, { stick: {radius: 0.15}, sphere: {scale: 0.3} });
+                    viewer3D.zoomTo();
+                    viewer3D.render();
+                }, 100);
+
+            } catch (e) {
+                errorBox.textContent = e.message;
+                errorBox.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
 
         // === 輔助功能 ===
         function resetStep2() {
@@ -400,6 +683,17 @@
             const canvas = document.getElementById('structureCanvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0,0,canvas.width,canvas.height);
+        }
+        function resetStep4() {
+            document.getElementById('result-fingerprint').classList.add('hidden');
+            document.getElementById('error-fingerprint').classList.add('hidden');
+            document.getElementById('input-fingerprint').value = "";
+        }
+        function resetStep5() {
+            document.getElementById('result-3d').classList.add('hidden');
+            document.getElementById('error-3d').classList.add('hidden');
+            document.getElementById('input-3d').value = currentCID ? "CID: " + currentCID : "";
+            if(viewer3D) viewer3D.clear();
         }
 
         function copySmiles() {
@@ -420,9 +714,140 @@
             document.body.removeChild(textArea);
         }
 
+        // 下載 2D 結構圖圖片功能 (強制白底)
+        function downloadStructureImage() {
+            const sourceCanvas = document.getElementById('structureCanvas');
+            // 如果畫布為空或沒內容，就不下載
+            if (sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+                alert("目前沒有結構圖可供下載！");
+                return;
+            }
+            
+            // 建立一個臨時 Canvas 來合併白色背景
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = sourceCanvas.width;
+            tempCanvas.height = sourceCanvas.height;
+            const ctx = tempCanvas.getContext('2d');
+
+            // 1. 先填滿白色背景
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // 2. 再將原本的透明結構圖疊上去
+            ctx.drawImage(sourceCanvas, 0, 0);
+            
+            // 使用目前的 SMILES 輸入值作為檔名的一部分，若無則用預設值
+            let name = document.getElementById('input-smiles').value.trim() || 'structure';
+            name = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+            const link = document.createElement('a');
+            link.download = `${name}_structure.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 下載 3D 結構圖功能 (PNG)
+        function download3DImage() {
+            if (!viewer3D) {
+                alert("目前沒有 3D 模型可供下載！");
+                return;
+            }
+            
+            // 獲取 Data URL
+            const dataURL = viewer3D.pngURI();
+            
+            let name = document.getElementById('input-smiles').value.trim() || 'structure_3d';
+            name = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+            const link = document.createElement('a');
+            link.download = `${name}_3d.png`;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 下載 3D 結構圖功能 (GIF 動畫)
+        async function download3DGIF() {
+            if (!viewer3D) {
+                alert("目前沒有 3D 模型可供下載！");
+                return;
+            }
+
+            const gifBtn = document.getElementById('btn-gif');
+            const gifText = document.getElementById('gif-text');
+            const loader = document.getElementById('loader-gif');
+            
+            // UI 狀態：生成中
+            gifBtn.disabled = true;
+            gifText.textContent = "生成中...";
+            loader.classList.remove('hidden');
+
+            try {
+                // 1. 初始化 GIF (使用 fetch 載入 worker 以避開跨域問題)
+                // 我們直接使用 cdnjs 的 worker 檔案
+                const workerBlob = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js').then(r => r.blob());
+                const workerUrl = URL.createObjectURL(workerBlob);
+
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: viewer3D.getCanvas().width,
+                    height: viewer3D.getCanvas().height,
+                    workerScript: workerUrl
+                });
+
+                // 2. 開始旋轉並截圖
+                // 360 度，每步 10 度，共 36 幀
+                const totalFrames = 36;
+                const anglePerFrame = 10;
+                const canvas = viewer3D.getCanvas();
+
+                for (let i = 0; i < totalFrames; i++) {
+                    viewer3D.rotate(anglePerFrame, "y"); // 繞 Y 軸旋轉
+                    viewer3D.render();
+                    
+                    // 將 Canvas 當前畫面加入 GIF
+                    gif.addFrame(canvas, {copy: true, delay: 100}); // delay 100ms = 10fps
+                }
+
+                // 3. 渲染並下載
+                gif.on('finished', function(blob) {
+                    let name = document.getElementById('input-smiles').value.trim() || 'structure_3d';
+                    name = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    
+                    const link = document.createElement('a');
+                    link.download = `${name}_spinning.gif`;
+                    link.href = URL.createObjectURL(blob);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // 還原 UI
+                    gifBtn.disabled = false;
+                    gifText.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> GIF 動畫`;
+                    loader.classList.add('hidden');
+                });
+
+                gif.render();
+
+            } catch (error) {
+                console.error("GIF 生成失敗:", error);
+                alert("GIF 生成失敗，請查看控制台錯誤訊息。");
+                // 還原 UI
+                gifBtn.disabled = false;
+                gifText.textContent = "GIF 動畫";
+                loader.classList.add('hidden');
+            }
+        }
+
+        // 綁定 Enter 鍵
         document.getElementById("input-trans").addEventListener("keypress", (e) => { if (e.key === "Enter") doTranslate(); });
         document.getElementById("input-formula").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetFormula(); });
         document.getElementById("input-smiles").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetSmiles(); });
+        document.getElementById("input-fingerprint").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetFingerprint(); });
 
     </script>
 </body>
