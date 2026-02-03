@@ -518,9 +518,10 @@
                 document.getElementById('out-smiles-code').textContent = smiles;
                 resultBox.classList.remove('hidden');
 
-                // 自動填入 Step 4
-                document.getElementById('input-fingerprint').value = smiles;
-                resetStep4(); 
+                // 自動填入 Step 4 (修正順序問題)
+                resetStep4(); // 先重置，確保狀態清空
+                document.getElementById('input-fingerprint').value = smiles; // 再填入數值
+                
                 resetStep5(); // 清除 3D
 
                 // 繪圖
