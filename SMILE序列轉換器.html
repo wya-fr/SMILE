@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
     <!-- 引入 3Dmol.js 用於繪製 3D 結構 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
-    <!-- 新增：引入 gif.js 用於生成 GIF 動畫 -->
+    <!-- 引入 gif.js 用於生成 GIF 動畫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
     
     <style>
@@ -79,7 +79,7 @@
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-gray-800 tracking-tight">🧪 化學結構轉換實驗室</h1>
-            <p class="text-gray-600 mt-2">五階段工具：翻譯 ➔ 化學式 ➔ SMILES ➔ 分子指紋 ➔ 3D 立體結構</p>
+            <p class="text-gray-600 mt-2">六階段工具：翻譯 ➔ 化學式 ➔ SMILES ➔ 指紋 ➔ 3D ➔ 逆合成分析</p>
         </div>
 
         <!-- Step 1: 翻譯 -->
@@ -311,6 +311,42 @@
                 <div id="error-3d" class="hidden mt-2 text-red-500 text-sm"></div>
             </div>
         </div>
+
+        <!-- Arrow -->
+        <div class="arrow-down">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+
+        <!-- Step 6: 逆合成分析 (新增) -->
+        <div class="step-card bg-white rounded-xl shadow-md overflow-hidden border-l-8 border-rose-500">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="bg-rose-100 text-rose-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">6</span>
+                        逆合成路徑分析 (Retrosynthesis)
+                    </h2>
+                    <span class="text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-1 rounded">Educational Logic</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="input-retro" 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none"
+                        placeholder="等待 SMILES 輸入..." readonly>
+                    <button onclick="doRetrosynthesis()" class="bg-rose-600 hover:bg-rose-700 text-white px-6 py-2 rounded-lg font-medium transition flex items-center gap-2">
+                        <span>開始分析</span>
+                        <div id="loader-retro" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <!-- 逆合成結果 -->
+                <div id="result-retro" class="hidden mt-6">
+                    <div id="retro-content" class="space-y-6">
+                        <!-- 動態生成內容 -->
+                    </div>
+                </div>
+                <div id="error-retro" class="hidden mt-2 text-red-500 text-sm"></div>
+            </div>
+        </div>
         
         <div class="text-center text-gray-400 text-xs py-4">
             <p>Data provided by PubChem, Wikipedia & RDKit</p>
@@ -319,11 +355,116 @@
 
     </div>
 
+    <!-- 圖片燈箱 (Modal) -->
+    <div id="image-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity" onclick="closeModal()">
+        <div class="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
+            <!-- 圖片容器 -->
+            <div class="bg-white p-2 rounded-xl shadow-2xl relative" onclick="event.stopPropagation()">
+                <img id="modal-image" src="" alt="Structure Zoom" class="max-w-full max-h-[80vh] object-contain rounded-lg">
+                <!-- 載入中動畫 -->
+                <div id="modal-loader" class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-lg hidden">
+                    <div class="spinner border-gray-300 border-t-rose-500 w-10 h-10"></div>
+                </div>
+            </div>
+            
+            <!-- 關閉按鈕 -->
+            <button class="absolute -top-12 right-0 bg-white/10 hover:bg-white/30 text-white rounded-full p-2 transition focus:outline-none" onclick="closeModal()">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    </div>
+
     <script>
         // === 全域變數 ===
         let currentCID = null;
         let RDKitModule = null;
         let viewer3D = null; // 3Dmol viewer 實例
+
+        // === 逆合成資料庫 (Educational Library) ===
+        const MOLECULE_LIBRARY = {
+            "CC(=O)Oc1ccccc1C(=O)O": {
+                name: "阿斯匹靈 (Aspirin)",
+                description: "非類固醇消炎藥，經典的酯化反應產物。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "酯鍵 (Ester Linkage)",
+                    explanation: "切斷酚酯鍵，這是最容易形成的鍵結。",
+                    reagents: [
+                        { name: "水楊酸", smiles: "Oc1ccccc1C(=O)O" },
+                        { name: "乙酸酐", smiles: "CC(=O)OC(C)=O" }
+                    ],
+                    mechanism: "親核醯基取代反應"
+                }]
+            },
+            "c1ccccc1OC(=O)C": { // 阿斯匹靈芳香化寫法備份
+                 name: "阿斯匹靈 (Aspirin)",
+                 description: "非類固醇消炎藥，經典的酯化反應產物。",
+                 steps: [{
+                     type: "切斷 (Disconnection)",
+                     target: "酯鍵 (Ester Linkage)",
+                     explanation: "切斷酚酯鍵，這是最容易形成的鍵結。",
+                     reagents: [
+                         { name: "水楊酸", smiles: "Oc1ccccc1C(=O)O" },
+                         { name: "乙酸酐", smiles: "CC(=O)OC(C)=O" }
+                     ],
+                     mechanism: "親核醯基取代反應"
+                 }]
+            },
+            "CC(=O)Nc1ccc(O)cc1": {
+                name: "乙醯胺酚 (Paracetamol)",
+                description: "常見的解熱鎮痛藥 (普拿疼)。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "醯胺鍵 (Amide Linkage)",
+                    explanation: "切斷氮與羰基碳之間的鍵結。",
+                    reagents: [
+                        { name: "對胺基苯酚", smiles: "Nc1ccc(O)cc1" },
+                        { name: "乙酸酐", smiles: "CC(=O)OC(C)=O" }
+                    ],
+                    mechanism: "胺基的醯化反應"
+                }]
+            },
+            "CCOC(=O)c1ccc(N)cc1": {
+                name: "苯佐卡因 (Benzocaine)",
+                description: "局部麻醉藥，簡單的酯類結構。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "酯鍵 (Ester Linkage)",
+                    explanation: "切斷乙氧基與羰基之間的鍵結。",
+                    reagents: [
+                        { name: "對胺基苯甲酸 (PABA)", smiles: "Nc1ccc(C(=O)O)cc1" },
+                        { name: "乙醇", smiles: "CCO" }
+                    ],
+                    mechanism: "Fischer 酯化反應 (酸催化)"
+                }]
+            },
+            "Cn1cnc2c1c(=O)n(C)c(=O)n2C": {
+                name: "咖啡因 (Caffeine)",
+                description: "黃嘌呤生物鹼，中樞神經興奮劑。",
+                steps: [
+                    {
+                        type: "切斷 (Disconnection)",
+                        target: "甲基化逆推",
+                        explanation: "將氮原子上的甲基切斷，回推至黃嘌呤骨架。",
+                        reagents: [
+                            { name: "黃嘌呤", smiles: "O=c1[nH]c(=O)c2[nH]cnc2[nH]1" },
+                            { name: "碘甲烷", smiles: "CI" }
+                        ],
+                        mechanism: "N-烷基化反應"
+                    },
+                    {
+                        type: "骨架構建",
+                        target: "嘧啶環合成",
+                        explanation: "Traube 嘌呤合成法。",
+                        reagents: [
+                            { name: "二甲基脲", smiles: "CNC(=O)NC" },
+                            { name: "氰乙酸", smiles: "N#CCC(=O)O" }
+                        ],
+                        mechanism: "縮合環化"
+                    }
+                ]
+            }
+        };
 
         // === 初始化 RDKit ===
         window.initRDKitModule().then(function(instance) {
@@ -394,6 +535,7 @@
                     resetStep3();
                     resetStep4();
                     resetStep5();
+                    resetStep6();
                 } else {
                     throw new Error("找不到對應的英文翻譯，請嘗試直接輸入英文。");
                 }
@@ -449,6 +591,7 @@
                 resetStep3();
                 resetStep4();
                 resetStep5();
+                resetStep6();
                 
                 // 自動填入 Step 5
                 document.getElementById('input-3d').value = "CID: " + currentCID;
@@ -508,19 +651,17 @@
                 if (!response.ok) throw new Error(`API 錯誤 (Status: ${response.status})`);
                 
                 const smilesText = await response.text();
-                let smiles = smilesText.trim(); // Change to let for modification
+                let smiles = smilesText.trim(); 
 
                 if (!smiles || smiles.length === 0) {
                      throw new Error(`資料庫回傳空字串 (CID: ${activeCID})`);
                 }
 
-                // === 新增：嘗試使用 RDKit 強制轉換為芳香族寫法 (Aromatic Notation) ===
+                // 強制轉換為芳香族寫法
                 if (typeof RDKitModule !== 'undefined' && RDKitModule) {
                     try {
                         const mol = RDKitModule.get_mol(smiles);
                         if (mol && mol.is_valid()) {
-                            // RDKit 的 get_smiles() 預設會輸出標準化且芳香化的 SMILES
-                            // 例如 C1=CC=CC=C1 (Kekulé) -> c1ccccc1 (Aromatic)
                             smiles = mol.get_smiles();
                             mol.delete();
                             console.log("Converted to aromatic SMILES:", smiles);
@@ -534,11 +675,14 @@
                 document.getElementById('out-smiles-code').textContent = smiles;
                 resultBox.classList.remove('hidden');
 
-                // 自動填入 Step 4 (修正順序問題)
-                resetStep4(); // 先重置，確保狀態清空
-                document.getElementById('input-fingerprint').value = smiles; // 再填入數值
+                // 自動填入 Step 4 & 6
+                resetStep4();
+                document.getElementById('input-fingerprint').value = smiles;
                 
-                resetStep5(); // 清除 3D
+                resetStep5();
+                
+                resetStep6();
+                document.getElementById('input-retro').value = smiles;
 
                 // 繪圖
                 canvas.width = 450;
@@ -584,26 +728,21 @@
             fpMatrix.innerHTML = "";
 
             try {
-                // 1. 解析分子
                 const mol = RDKitModule.get_mol(smiles);
                 if (!mol || mol.is_valid() === false) {
                     if(mol) mol.delete();
                     throw new Error("無效的 SMILES 序列，RDKit 無法解析");
                 }
 
-                // 2. 計算 Morgan Fingerprint (radius=2, bits=2048)
                 const fp_params = JSON.stringify({ radius: 2, nBits: 2048 });
                 const fp_hex = mol.get_morgan_fp(fp_params);
-                
                 mol.delete();
 
-                // 3. Hex 轉 Binary
                 let fp_bits = "";
                 for (let i = 0; i < fp_hex.length; i++) {
                     fp_bits += parseInt(fp_hex[i], 16).toString(2).padStart(4, '0');
                 }
 
-                // 4. 渲染位元格子
                 let activeCount = 0;
                 const fragment = document.createDocumentFragment();
 
@@ -633,7 +772,6 @@
             const resultBox = document.getElementById('result-3d');
             const errorBox = document.getElementById('error-3d');
             
-            // 檢查 CID
             if (!currentCID) {
                 errorBox.textContent = "尚未取得化合物 CID，請先執行步驟 2";
                 errorBox.classList.remove('hidden');
@@ -645,10 +783,7 @@
             errorBox.classList.add('hidden');
 
             try {
-                // 向 PubChem 請求 3D SDF 檔案
-                // record_type=3d 是關鍵，請求計算好的 3D 構形
                 const sdfUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${currentCID}/SDF?record_type=3d`;
-                
                 const response = await fetch(sdfUrl);
                 if (!response.ok) {
                     if (response.status === 404) throw new Error("資料庫中無此化合物的 3D 模型");
@@ -656,24 +791,16 @@
                 }
                 
                 const sdfData = await response.text();
-                
-                // 顯示容器
                 resultBox.classList.remove('hidden');
 
-                // 初始化或更新 3D Viewer
-                // 延遲一點點確保 div 已經顯示且有高度
                 setTimeout(() => {
                     const element = document.getElementById('container-3d');
-                    
-                    // 如果尚未初始化，創建 viewer
                     if (!viewer3D) {
                         const config = { backgroundColor: 'white' };
                         viewer3D = $3Dmol.createViewer(element, config);
                     }
-                    
                     viewer3D.clear();
                     viewer3D.addModel(sdfData, "sdf");
-                    // 設定樣式：棒狀圖 (stick)
                     viewer3D.setStyle({}, { stick: {radius: 0.15}, sphere: {scale: 0.3} });
                     viewer3D.zoomTo();
                     viewer3D.render();
@@ -686,6 +813,209 @@
                 loader.classList.add('hidden');
             }
         }
+
+        // === Step 6: 逆合成分析 (Vanilla JS Implementation) ===
+        function analyzeFunctionalGroups(smiles) {
+            const suggestions = [];
+            
+            if (smiles.includes("C(=O)O") || smiles.includes("OC(=O)")) {
+                suggestions.push({
+                    group: "酯基 (Ester)",
+                    advice: "建議切斷 C-O 單鍵。這通常來自羧酸與醇的反應。",
+                    retro: "R-COOH + R'-OH"
+                });
+            }
+            if (smiles.includes("C(=O)N") || smiles.includes("NC(=O)")) {
+                suggestions.push({
+                    group: "醯胺基 (Amide)",
+                    advice: "建議切斷 C-N 鍵。這通常來自羧酸衍生物與胺的反應。",
+                    retro: "R-COOH + R'-NH2"
+                });
+            }
+            if (smiles.includes("C#N")) {
+                suggestions.push({
+                    group: "腈基 (Nitrile)",
+                    advice: "腈基可以由鹵代烷與氰化鈉反應製得，或由醯胺脫水而來。",
+                    retro: "R-X + NaCN"
+                });
+            }
+            
+            if (suggestions.length === 0) {
+                suggestions.push({
+                    group: "複雜/未知結構",
+                    advice: "未檢測到簡單的切斷點 (酯/醯胺)。建議尋找 C-C 鍵的構建反應 (如 Grignard, Suzuki, Aldol)。",
+                    retro: "需使用專業軟體分析"
+                });
+            }
+            return suggestions;
+        }
+
+        async function doRetrosynthesis() {
+            const input = document.getElementById('input-retro').value.trim();
+            const loader = document.getElementById('loader-retro');
+            const resultBox = document.getElementById('result-retro');
+            const contentBox = document.getElementById('retro-content');
+            const errorBox = document.getElementById('error-retro');
+
+            if(!input) return;
+
+            // Reset UI
+            loader.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+            errorBox.classList.add('hidden');
+            contentBox.innerHTML = '';
+
+            try {
+                // 模擬思考時間
+                await new Promise(r => setTimeout(r, 600));
+
+                let analysisData = null;
+                // 1. 檢查是否在庫中
+                if (MOLECULE_LIBRARY[input]) {
+                    analysisData = { type: 'known', data: MOLECULE_LIBRARY[input] };
+                } else {
+                    // 2. 啟發式分析
+                    const heuristics = analyzeFunctionalGroups(input);
+                    analysisData = { type: 'heuristic', data: heuristics };
+                }
+
+                // 產生 HTML 內容
+                if (analysisData.type === 'known') {
+                    // === 已知分子顯示邏輯 ===
+                    const data = analysisData.data;
+                    let html = `
+                        <div class="bg-rose-50 p-6 rounded-lg border border-rose-100">
+                            <h3 class="text-2xl font-bold text-rose-800 mb-2">${data.name}</h3>
+                            <p class="text-gray-700">${data.description}</p>
+                        </div>
+                    `;
+
+                    // 遍歷步驟
+                    data.steps.forEach((step, idx) => {
+                        let reagentsHtml = '';
+                        // 生成試劑卡片
+                        step.reagents.forEach(r => {
+                            const encodedS = encodeURIComponent(r.smiles);
+                            // 小圖 (預覽用)
+                            const imgUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${encodedS}/PNG?record_type=2d&image_size=300x300`;
+                            // 大圖 (Modal 用)
+                            const largeImgUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${encodedS}/PNG?record_type=2d&image_size=800x800`;
+                            
+                            reagentsHtml += `
+                                <div class="flex flex-col items-center bg-white p-2 rounded border border-gray-200 w-32 shadow-sm transition hover:shadow-md hover:border-rose-300 group cursor-pointer" onclick="openModal('${largeImgUrl}')" title="點擊放大">
+                                    <div class="relative w-24 h-24 flex items-center justify-center">
+                                        <img src="${imgUrl}" class="max-w-full max-h-full object-contain opacity-90 group-hover:opacity-100" onerror="this.src='https://via.placeholder.com/150?text=Structure'">
+                                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/20">
+                                            <svg class="w-6 h-6 text-rose-500 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-700 mt-1 text-center truncate w-full px-1">${r.name}</span>
+                                </div>
+                            `;
+                        });
+
+                        html += `
+                            <div class="border-l-4 border-rose-400 pl-4 py-2 mt-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="bg-rose-100 text-rose-700 font-bold px-2 py-1 rounded text-sm">Step ${idx + 1}</span>
+                                    <span class="font-bold text-gray-800">${step.type}</span>
+                                    <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">${step.target}</span>
+                                </div>
+                                <p class="text-gray-600 mb-4">${step.explanation}</p>
+                                
+                                <div class="bg-white/50 p-4 rounded-lg border border-rose-100">
+                                    <p class="text-xs text-gray-500 font-bold uppercase mb-2">建議前驅物 / 試劑 (點擊放大)</p>
+                                    <div class="flex flex-wrap gap-4 items-center">
+                                        ${reagentsHtml}
+                                    </div>
+                                    <div class="mt-3 text-sm text-rose-600 font-medium bg-rose-50 inline-block px-2 py-1 rounded">
+                                        反應類型: ${step.mechanism}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    contentBox.innerHTML = html;
+
+                } else {
+                    // === 未知分子啟發式顯示 ===
+                    let html = `
+                        <div class="bg-amber-50 p-4 rounded-lg border border-amber-200 mb-4">
+                            <div class="flex items-center gap-2 text-amber-800 font-bold mb-1">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                自動分析結果
+                            </div>
+                            <p class="text-sm text-amber-700">該分子不在教學資料庫中。系統根據結構特徵進行了初步判定。</p>
+                        </div>
+                        <h4 class="font-bold text-gray-700 mb-3">潛在切斷點建議：</h4>
+                        <div class="grid gap-4 md:grid-cols-2">
+                    `;
+
+                    analysisData.data.forEach(item => {
+                        html += `
+                            <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm hover:border-rose-300 transition">
+                                <h5 class="text-lg font-bold text-rose-600 mb-1">${item.group}</h5>
+                                <p class="text-gray-600 text-sm mb-3">${item.advice}</p>
+                                <div class="bg-gray-800 text-gray-200 p-2 rounded font-mono text-xs">
+                                    Target ⇒ ${item.retro}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `</div>`;
+                    contentBox.innerHTML = html;
+                }
+
+                resultBox.classList.remove('hidden');
+
+            } catch (err) {
+                errorBox.textContent = "分析失敗：" + err.message;
+                errorBox.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+
+        // === 圖片燈箱功能 ===
+        function openModal(imgUrl) {
+            const modal = document.getElementById('image-modal');
+            const img = document.getElementById('modal-image');
+            const loader = document.getElementById('modal-loader');
+            
+            // 顯示 Modal 與 Loader
+            modal.classList.remove('hidden');
+            loader.classList.remove('hidden');
+            
+            // 設定圖片來源
+            img.src = imgUrl;
+            
+            // 圖片載入完成後隱藏 Loader
+            img.onload = () => {
+                loader.classList.add('hidden');
+            };
+            
+            // 處理載入錯誤
+            img.onerror = () => {
+                loader.classList.add('hidden');
+                alert("圖片載入失敗");
+            };
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('image-modal');
+            modal.classList.add('hidden');
+            // 清空來源以節省資源
+            document.getElementById('modal-image').src = "";
+        }
+
+        // 監聽 Esc 鍵關閉 Modal
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape") {
+                closeModal();
+            }
+        });
 
 
         // === 輔助功能 ===
@@ -711,6 +1041,12 @@
             document.getElementById('error-3d').classList.add('hidden');
             document.getElementById('input-3d').value = currentCID ? "CID: " + currentCID : "";
             if(viewer3D) viewer3D.clear();
+        }
+        function resetStep6() {
+            document.getElementById('result-retro').classList.add('hidden');
+            document.getElementById('error-retro').classList.add('hidden');
+            document.getElementById('retro-content').innerHTML = "";
+            document.getElementById('input-retro').value = "";
         }
 
         function copySmiles() {
@@ -865,6 +1201,7 @@
         document.getElementById("input-formula").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetFormula(); });
         document.getElementById("input-smiles").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetSmiles(); });
         document.getElementById("input-fingerprint").addEventListener("keypress", (e) => { if (e.key === "Enter") doGetFingerprint(); });
+        document.getElementById("input-retro").addEventListener("keypress", (e) => { if (e.key === "Enter") doRetrosynthesis(); });
 
     </script>
 </body>
