@@ -508,10 +508,26 @@
                 if (!response.ok) throw new Error(`API 錯誤 (Status: ${response.status})`);
                 
                 const smilesText = await response.text();
-                const smiles = smilesText.trim();
+                let smiles = smilesText.trim(); // Change to let for modification
 
                 if (!smiles || smiles.length === 0) {
                      throw new Error(`資料庫回傳空字串 (CID: ${activeCID})`);
+                }
+
+                // === 新增：嘗試使用 RDKit 強制轉換為芳香族寫法 (Aromatic Notation) ===
+                if (typeof RDKitModule !== 'undefined' && RDKitModule) {
+                    try {
+                        const mol = RDKitModule.get_mol(smiles);
+                        if (mol && mol.is_valid()) {
+                            // RDKit 的 get_smiles() 預設會輸出標準化且芳香化的 SMILES
+                            // 例如 C1=CC=CC=C1 (Kekulé) -> c1ccccc1 (Aromatic)
+                            smiles = mol.get_smiles();
+                            mol.delete();
+                            console.log("Converted to aromatic SMILES:", smiles);
+                        }
+                    } catch (err) {
+                        console.warn("RDKit normalization failed:", err);
+                    }
                 }
 
                 // 顯示 SMILES
