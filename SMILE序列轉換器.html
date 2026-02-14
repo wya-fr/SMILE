@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>化學結構轉換實驗室</title>
+    <title>化學表示轉換工具</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 SmilesDrawer 用於繪製 2D 結構圖 -->
+    <!-- 引入 SmilesDrawer (保留備用，但主要繪圖改用 RDKit) -->
     <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
-    <!-- 引入 RDKit 用於計算分子指紋 -->
+    <!-- 引入 RDKit 用於計算分子指紋與繪圖 -->
     <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
     <!-- 引入 3Dmol.js 用於繪製 3D 結構 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
@@ -70,6 +70,13 @@
             border-radius: 0.5rem;
             overflow: hidden;
         }
+        
+        /* SVG 容器樣式修正 */
+        #structure-container svg {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -78,7 +85,7 @@
         
         <!-- Header -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800 tracking-tight">🧪 化學結構轉換實驗室</h1>
+            <h1 class="text-3xl font-bold text-gray-800 tracking-tight">🧪 化學表示轉換工具</h1>
             <p class="text-gray-600 mt-2">六階段工具：翻譯 ➔ 化學式 ➔ SMILES ➔ 指紋 ➔ 3D ➔ 逆合成分析</p>
         </div>
 
@@ -175,7 +182,7 @@
                         <span class="bg-green-100 text-green-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">3</span>
                         SMILES 與 2D 結構
                     </h2>
-                    <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">SmilesDrawer</span>
+                    <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">RDKit Engine</span>
                 </div>
 
                 <div class="flex gap-2">
@@ -199,8 +206,10 @@
                         </div>
                     </div>
 
-                    <div class="mt-4 border border-gray-200 rounded-lg p-2 bg-white flex justify-center items-center shadow-inner relative" style="height: 300px;">
-                         <canvas id="structureCanvas"></canvas>
+                    <!-- 這裡改用 DIV 來放 SVG，而不是 Canvas -->
+                    <div class="mt-4 border border-gray-200 rounded-lg p-2 bg-white flex justify-center items-center shadow-inner relative" style="height: 350px;">
+                         <div id="structure-container" class="w-full h-full flex justify-center items-center"></div>
+                         
                          <!-- 下載按鈕 -->
                          <button onclick="downloadStructureImage()" class="absolute bottom-2 right-2 bg-white/90 hover:bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-gray-500 hover:text-green-600 transition flex items-center gap-1 text-xs font-bold ring-1 ring-gray-100" title="下載 PNG 圖片">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -463,6 +472,133 @@
                         mechanism: "縮合環化"
                     }
                 ]
+            },
+            // 新增：布洛芬
+            "CC(C)Cc1ccc(C(C)C(=O)O)cc1": {
+                name: "布洛芬 (Ibuprofen)",
+                description: "非類固醇消炎藥 (NSAID)，常見的止痛藥。",
+                steps: [
+                    {
+                        type: "官能基轉換 (FGI)",
+                        target: "羧酸形成",
+                        explanation: "羧酸基團可由氰基水解而來 (Boot Process)。",
+                        reagents: [
+                            { name: "前體腈化物", smiles: "CC(C)Cc1ccc(C(C)C#N)cc1" }
+                        ],
+                        mechanism: "腈的水解"
+                    },
+                    {
+                        type: "切斷 (Disconnection)",
+                        target: "芳香環烷基化",
+                        explanation: "異丁基苯骨架可通過 Friedel-Crafts 反應構建。",
+                        reagents: [
+                            { name: "異丁基苯", smiles: "CC(C)Cc1ccccc1" },
+                            { name: "乙醯氯 (後續轉化)", smiles: "CC(=O)Cl" }
+                        ],
+                        mechanism: "Friedel-Crafts 醯化"
+                    }
+                ]
+            },
+            // 新增：磺胺
+            "Nc1ccc(S(N)(=O)=O)cc1": {
+                name: "磺胺 (Sulfanilamide)",
+                description: "第一種廣效抗菌藥物，磺胺類藥物的母體。",
+                steps: [
+                    {
+                        type: "保護基移除",
+                        target: "醯胺水解",
+                        explanation: "胺基在合成過程中需保護 (如乙醯化) 以避免副反應。",
+                        reagents: [
+                            { name: "乙醯磺胺", smiles: "CC(=O)Nc1ccc(S(N)(=O)=O)cc1" }
+                        ],
+                        mechanism: "醯胺水解"
+                    },
+                    {
+                        type: "切斷 (Disconnection)",
+                        target: "磺醯胺鍵",
+                        explanation: "磺醯氯與氨反應生成磺醯胺。",
+                        reagents: [
+                            { name: "對乙醯胺基苯磺醯氯", smiles: "CC(=O)Nc1ccc(S(=O)(=O)Cl)cc1" },
+                            { name: "氨", smiles: "N" }
+                        ],
+                        mechanism: "親核取代"
+                    }
+                ]
+            },
+            // 新增：水楊酸甲酯
+            "COC(=O)c1ccccc1O": {
+                name: "水楊酸甲酯 (Methyl Salicylate)",
+                description: "冬青油，具有薄荷味，常用於痠痛貼布。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "酯鍵",
+                    explanation: "典型的酯化反應。",
+                    reagents: [
+                        { name: "水楊酸", smiles: "Oc1ccccc1C(=O)O" },
+                        { name: "甲醇", smiles: "CO" }
+                    ],
+                    mechanism: "Fischer 酯化反應"
+                }]
+            },
+            // 新增：乙酸異戊酯
+            "CC(C)CCOC(C)=O": {
+                name: "乙酸異戊酯 (Isoamyl Acetate)",
+                description: "香蕉油，具有強烈的香蕉氣味。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "酯鍵",
+                    explanation: "由乙酸與異戊醇縮合而成。",
+                    reagents: [
+                        { name: "異戊醇", smiles: "CC(C)CCO" },
+                        { name: "乙酸", smiles: "CC(=O)O" }
+                    ],
+                    mechanism: "Fischer 酯化反應"
+                }]
+            },
+            // 新增：甲基橙
+            "CN(C)c1ccc(N=Nc2ccc(S(=O)(=O)O)cc2)cc1": {
+                name: "甲基橙 (Methyl Orange)",
+                description: "常見的酸鹼指示劑，酸性顯紅，鹼性顯黃。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "偶氮鍵 (N=N)",
+                    explanation: "偶氮染料通常由重氮鹽與活化芳香環偶合而成。",
+                    reagents: [
+                        { name: "重氮對苯磺酸鹽", smiles: "O=S(=O)([O-])c1ccc([N+]#N)cc1" },
+                        { name: "N,N-二甲基苯胺", smiles: "CN(C)c1ccccc1" }
+                    ],
+                    mechanism: "重氮偶合反應 (Diazo Coupling)"
+                }]
+            },
+            // 新增：酚酞
+            "Oc1ccc(cc1)C2(OC(=O)c3ccccc23)c4ccc(O)cc4": {
+                name: "酚酞 (Phenolphthalein)",
+                description: "酸鹼指示劑，遇鹼變紅。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "C-C 縮合",
+                    explanation: "酸酐與富電子芳香環 (酚) 的縮合反應。",
+                    reagents: [
+                        { name: "苯酚 (2當量)", smiles: "Oc1ccccc1" },
+                        { name: "鄰苯二甲酸酐", smiles: "O=C1OC(=O)c2ccccc12" }
+                    ],
+                    mechanism: "Friedel-Crafts 縮合"
+                }]
+            },
+            // 新增：靛藍
+            "O=C1C(=C2NC(=O)c3ccccc23)Nc4ccccc14": {
+                name: "靛藍 (Indigo)",
+                description: "著名的藍色染料，用於牛仔褲染色。",
+                steps: [{
+                    type: "切斷 (Disconnection)",
+                    target: "雙鍵構建",
+                    explanation: "Baeyer-Drewson 靛藍合成法。",
+                    reagents: [
+                        { name: "鄰硝基苯甲醛", smiles: "O=[N+]([O-])c1ccccc1C=O" },
+                        { name: "丙酮", smiles: "CC(=O)C" }
+                    ],
+                    mechanism: "Aldol 縮合反應"
+                }]
             }
         };
 
@@ -484,19 +620,7 @@
             console.error(err);
         });
         
-        // === 初始化 SmilesDrawer ===
-        const drawerOptions = {
-            width: 450, 
-            height: 280,
-            bondThickness: 1.0, bondLength: 15, shortBondLength: 0.85, bondSpacing: 0.18 * 15,
-            atomVisualization: 'default', isometric: true, debug: false, terminalCarbons: true,
-            explicitHydrogens: false, overlapSensitivity: 0.42, overlapResolutionIterations: 1,
-            compactDrawing: false, fontSizeLarge: 6, fontSizeSmall: 4,
-            themes: { light: { C: '#222', O: '#e53e3e', N: '#3182ce', F: '#38a169', CL: '#38a169', BR: '#805ad5', I: '#805ad5', P: '#dd6b20', S: '#d69e2e', BACKGROUND: '#ffffff' } }
-        };
-        let drawer;
-        try { drawer = new SmilesDrawer.Drawer(drawerOptions); } catch (e) { console.error(e); }
-
+        // SmilesDrawer 設定已移除，改用 RDKit
 
         // === Step 1: 翻譯 ===
         async function doTranslate() {
@@ -605,27 +729,26 @@
         }
 
 
-        // === Step 3: SMILES & 結構 ===
+        // === Step 3: SMILES & 結構 (使用 RDKit) ===
         async function doGetSmiles() {
             const input = document.getElementById('input-smiles').value.trim();
             const loader = document.getElementById('loader-smiles');
             const resultBox = document.getElementById('result-smiles');
             const errorBox = document.getElementById('error-smiles');
-            const canvas = document.getElementById('structureCanvas');
+            const container = document.getElementById('structure-container');
 
             if (!input) return;
 
             loader.classList.remove('hidden');
             resultBox.classList.add('hidden');
             errorBox.classList.add('hidden');
-
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            container.innerHTML = ""; // Clear SVG
 
             try {
                 let activeCID = currentCID;
                 const step2Input = document.getElementById('input-formula').value.trim();
 
+                // 如果 CID 不存在或使用者修改了輸入框，嘗試重新獲取 CID
                 if (!activeCID || input !== step2Input) {
                     try {
                         const cidUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(input)}/cids/JSON`;
@@ -645,6 +768,7 @@
                     throw new Error("找不到化合物 ID，請確認名稱是否正確。");
                 }
 
+                // 獲取 SMILES
                 const smilesUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${activeCID}/property/CanonicalSMILES/TXT`;
                 const response = await fetch(smilesUrl, { cache: 'no-store' });
                 
@@ -657,45 +781,37 @@
                      throw new Error(`資料庫回傳空字串 (CID: ${activeCID})`);
                 }
 
-                // 強制轉換為芳香族寫法
-                if (typeof RDKitModule !== 'undefined' && RDKitModule) {
-                    try {
-                        const mol = RDKitModule.get_mol(smiles);
-                        if (mol && mol.is_valid()) {
-                            smiles = mol.get_smiles();
-                            mol.delete();
-                            console.log("Converted to aromatic SMILES:", smiles);
-                        }
-                    } catch (err) {
-                        console.warn("RDKit normalization failed:", err);
-                    }
+                // === 使用 RDKit 繪圖 ===
+                if (typeof RDKitModule === 'undefined' || !RDKitModule) {
+                    throw new Error("RDKit 引擎尚未載入，請稍後再試");
                 }
 
-                // 顯示 SMILES
+                const mol = RDKitModule.get_mol(smiles);
+                if (!mol || mol.is_valid() === false) {
+                    if(mol) mol.delete();
+                    throw new Error("RDKit 無法解析此 SMILES");
+                }
+
+                // 生成 SVG (800x600 解析度)
+                const svg = mol.get_svg(800, 600);
+                container.innerHTML = svg;
+                
+                // 獲取標準化後的 SMILES 用於後續步驟
+                const canonicalSmiles = mol.get_smiles();
+                mol.delete();
+
+                // 顯示結果
                 document.getElementById('out-smiles-code').textContent = smiles;
                 resultBox.classList.remove('hidden');
 
                 // 自動填入 Step 4 & 6
                 resetStep4();
-                document.getElementById('input-fingerprint').value = smiles;
+                document.getElementById('input-fingerprint').value = canonicalSmiles;
                 
                 resetStep5();
                 
                 resetStep6();
-                document.getElementById('input-retro').value = smiles;
-
-                // 繪圖
-                canvas.width = 450;
-                canvas.height = 300;
-                if (typeof SmilesDrawer !== 'undefined') {
-                    setTimeout(() => {
-                            try {
-                            SmilesDrawer.parse(smiles, function(tree) {
-                                drawer.draw(tree, 'structureCanvas', 'light', false);
-                            }, function(err) { console.error('SmilesDrawer error:', err); });
-                            } catch(err) { console.error('Draw crash:', err); }
-                    }, 50);
-                }
+                document.getElementById('input-retro').value = canonicalSmiles;
 
             } catch (e) {
                 errorBox.textContent = `轉換失敗：${e.message}`;
@@ -938,17 +1054,21 @@
                     contentBox.innerHTML = html;
 
                 } else {
-                    // === 未知分子啟發式顯示 ===
+                    // === 未知分子啟發式顯示 (增強版) ===
                     let html = `
                         <div class="bg-amber-50 p-4 rounded-lg border border-amber-200 mb-4">
                             <div class="flex items-center gap-2 text-amber-800 font-bold mb-1">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                自動分析結果
+                                自動分析結果 (Heuristic Analysis)
                             </div>
-                            <p class="text-sm text-amber-700">該分子不在教學資料庫中。系統根據結構特徵進行了初步判定。</p>
+                            <p class="text-sm text-amber-700">
+                                該分子不在教學資料庫中。系統目前使用<b>結構特徵規則</b>進行初步推斷，僅供參考。<br>
+                                對於未知分子的精確逆合成，通常需要依賴深度學習模型 (Deep Learning) 或龐大的反應資料庫。
+                            </p>
                         </div>
+                        
                         <h4 class="font-bold text-gray-700 mb-3">潛在切斷點建議：</h4>
-                        <div class="grid gap-4 md:grid-cols-2">
+                        <div class="grid gap-4 md:grid-cols-2 mb-6">
                     `;
 
                     analysisData.data.forEach(item => {
@@ -964,6 +1084,34 @@
                     });
                     
                     html += `</div>`;
+
+                    // 新增：外部專業工具連結
+                    html += `
+                        <div class="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                            <h4 class="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                如何獲取真實的逆合成路徑？
+                            </h4>
+                            <p class="text-sm text-blue-700 mb-4">
+                                對於研究級的分子，化學家通常使用以下專業 AI 工具來預測合成路徑：
+                            </p>
+                            <div class="flex flex-wrap gap-3">
+                                <a href="https://rxn.res.ibm.com/" target="_blank" class="flex items-center gap-2 bg-white text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                                    IBM RXN (AI 預測)
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                                <a href="https://askcos.mit.edu/" target="_blank" class="flex items-center gap-2 bg-white text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                                    MIT ASKCOS
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                                <a href="https://scifinder.cas.org/" target="_blank" class="flex items-center gap-2 bg-white text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                                    SciFinder (文獻)
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    
                     contentBox.innerHTML = html;
                 }
 
@@ -1027,9 +1175,8 @@
         function resetStep3() {
             document.getElementById('result-smiles').classList.add('hidden');
             document.getElementById('error-smiles').classList.add('hidden');
-            const canvas = document.getElementById('structureCanvas');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0,0,canvas.width,canvas.height);
+            const container = document.getElementById('structure-container');
+            container.innerHTML = "";
         }
         function resetStep4() {
             document.getElementById('result-fingerprint').classList.add('hidden');
@@ -1067,38 +1214,57 @@
             document.body.removeChild(textArea);
         }
 
-        // 下載 2D 結構圖圖片功能 (強制白底)
+        // 下載 2D 結構圖圖片功能 (SVG 轉 PNG 強制白底)
         function downloadStructureImage() {
-            const sourceCanvas = document.getElementById('structureCanvas');
-            // 如果畫布為空或沒內容，就不下載
-            if (sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+            const container = document.getElementById('structure-container');
+            const svgElement = container.querySelector('svg');
+            
+            if (!svgElement) {
                 alert("目前沒有結構圖可供下載！");
                 return;
             }
             
-            // 建立一個臨時 Canvas 來合併白色背景
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = sourceCanvas.width;
-            tempCanvas.height = sourceCanvas.height;
-            const ctx = tempCanvas.getContext('2d');
+            // 序列化 SVG
+            const svgData = new XMLSerializer().serializeToString(svgElement);
+            const img = new Image();
+            // 加入 charset 避免亂碼
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
 
-            // 1. 先填滿白色背景
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            img.onload = function() {
+                // 建立 Canvas 並填入白底
+                const canvas = document.createElement('canvas');
+                // 獲取 SVG 的原始尺寸，若無則預設
+                const bbox = svgElement.viewBox.baseVal;
+                canvas.width = bbox ? bbox.width : 800;
+                canvas.height = bbox ? bbox.height : 600;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                
+                // 下載邏輯
+                let name = document.getElementById('input-smiles').value.trim() || 'structure';
+                name = name.replace(/[^a-zA-Z0-9_-]/g, '_');
 
-            // 2. 再將原本的透明結構圖疊上去
-            ctx.drawImage(sourceCanvas, 0, 0);
+                const link = document.createElement('a');
+                link.download = `${name}_structure.png`;
+                link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // 釋放記憶體
+                URL.revokeObjectURL(url);
+            };
             
-            // 使用目前的 SMILES 輸入值作為檔名的一部分，若無則用預設值
-            let name = document.getElementById('input-smiles').value.trim() || 'structure';
-            name = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            img.onerror = function() {
+                alert("圖片轉換失敗");
+                URL.revokeObjectURL(url);
+            };
 
-            const link = document.createElement('a');
-            link.download = `${name}_structure.png`;
-            link.href = tempCanvas.toDataURL('image/png');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            img.src = url;
         }
 
         // 下載 3D 結構圖功能 (PNG)
@@ -1122,7 +1288,7 @@
             document.body.removeChild(link);
         }
 
-        // 下載 3D 結構圖功能 (GIF 動畫)
+        // 下載 3D 結構圖功能 (GIF 動畫) - 修復空白問題
         async function download3DGIF() {
             if (!viewer3D) {
                 alert("目前沒有 3D 模型可供下載！");
@@ -1139,8 +1305,7 @@
             loader.classList.remove('hidden');
 
             try {
-                // 1. 初始化 GIF (使用 fetch 載入 worker 以避開跨域問題)
-                // 我們直接使用 cdnjs 的 worker 檔案
+                // 1. 初始化 GIF
                 const workerBlob = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js').then(r => r.blob());
                 const workerUrl = URL.createObjectURL(workerBlob);
 
@@ -1153,17 +1318,23 @@
                 });
 
                 // 2. 開始旋轉並截圖
-                // 360 度，每步 10 度，共 36 幀
                 const totalFrames = 36;
                 const anglePerFrame = 10;
-                const canvas = viewer3D.getCanvas();
-
+                
                 for (let i = 0; i < totalFrames; i++) {
-                    viewer3D.rotate(anglePerFrame, "y"); // 繞 Y 軸旋轉
+                    viewer3D.rotate(anglePerFrame, "y");
                     viewer3D.render();
                     
-                    // 將 Canvas 當前畫面加入 GIF
-                    gif.addFrame(canvas, {copy: true, delay: 100}); // delay 100ms = 10fps
+                    // 關鍵修正：使用 pngURI() 轉成 Image 物件再加入 GIF
+                    // 直接 addFrame(canvas) 容易因為 WebGL buffer clear 而變空白
+                    const dataUrl = viewer3D.pngURI();
+                    const img = new Image();
+                    await new Promise((resolve) => {
+                        img.onload = resolve;
+                        img.src = dataUrl;
+                    });
+                    
+                    gif.addFrame(img, {delay: 100});
                 }
 
                 // 3. 渲染並下載
